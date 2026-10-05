@@ -11,10 +11,11 @@ import { fileURLToPath } from "node:url";
 import { ShieldSessionController } from "../shield-session/controller.js";
 import type { UpstreamEndpoint } from "../shield-session/ports.js";
 import { SshTunnelDriver } from "../tunnel/ssh-tunnel-driver.js";
+import { WindowsSystemProxyBinding } from "../binding/windows-system-proxy-binding.js";
+import { createWindowsRegistryProxyPort } from "../binding/windows-registry-proxy-port.js";
 import { ElectronOperatorPrompt } from "./electron-prompt.js";
 import { EndpointStore } from "./endpoint-store.js";
 import { createJsonFilePort } from "./json-file-port.js";
-import { StubSystemProxyBinding } from "./stub-drivers.js";
 import { TraySession } from "./tray-session.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -30,7 +31,7 @@ function createSession(): TraySession {
   const storePath = path.join(app.getPath("userData"), "upstream-endpoint.json");
   const store = new EndpointStore(createJsonFilePort(storePath));
   const tunnel = new SshTunnelDriver();
-  const binding = new StubSystemProxyBinding();
+  const binding = new WindowsSystemProxyBinding(createWindowsRegistryProxyPort());
   prompt = new ElectronOperatorPrompt();
   const controller = new ShieldSessionController({ tunnel, binding, prompt });
   return new TraySession({ controller, store });
@@ -181,7 +182,7 @@ function buildConfigHtml(endpoint: UpstreamEndpoint | null): string {
 </head>
 <body>
   <h1>Upstream Endpoint</h1>
-  <p class="note">Uses OpenSSH <code>ssh -D</code> to the Upstream Endpoint (ADR 0003). Binding is still stubbed until ticket 4. Loopback hosts show as Dev Upstream. Dev Upstream does not defeat ISP Blocks.</p>
+  <p class="note">Uses OpenSSH <code>ssh -D</code> plus Windows System Proxy Binding (<code>socks=host:port</code>) so Chrome/Edge follow the Local Proxy. Loopback hosts show as Dev Upstream. Dev Upstream does not defeat ISP Blocks.</p>
   <label>Host <input id="host" value="${escapeHtml(host)}" /></label>
   <label>SSH user <input id="sshUser" value="${escapeHtml(sshUser)}" /></label>
   <label>Operator Key path <input id="operatorKeyPath" value="${escapeHtml(operatorKeyPath)}" /></label>

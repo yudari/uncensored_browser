@@ -39,8 +39,11 @@ Authorize your public key for the Windows user that will accept SSH, then point 
 ## Run
 
 ```bash
-npm start
+npm start          # rebuild TypeScript (~2–3s) then launch Electron
+npm run start:quick  # launch only (use after a successful build)
 ```
+
+After launch there is **no main window**. Look for the **blue tray icon** near the clock (Windows notification area; click the `^` chevron if hidden). Right-click for Arm / Configure / Quit. The terminal stays open while Electron runs — that is normal, not a hang.
 
 Tray menu:
 

@@ -5,6 +5,7 @@ import {
   ipcMain,
   Menu,
   nativeImage,
+  Notification,
   Tray,
 } from "electron";
 import path from "node:path";
@@ -259,8 +260,9 @@ function escapeHtml(value: string): string {
 }
 
 function createTrayIcon(): Electron.NativeImage {
+  // Solid blue 16x16 PNG — easy to spot in the Windows notification area.
   const png = Buffer.from(
-    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAMUlEQVQ4T2NkYGD4z0ABYBzVMKoBBgZGRkYGRgbG/wwwGjBqAAPDqAGjBgwGgwkAAf0B/zQWnQYAAAAASUVORK5CYII=",
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAFklEQVR4nGOQq7hDEmIY1TCqYfhqAAD2K3IQoc2C5QAAAABJRU5ErkJggg==",
     "base64",
   );
   return nativeImage.createFromBuffer(png);
@@ -283,7 +285,19 @@ app.whenReady().then(async () => {
   await session.hydrate();
 
   tray = new Tray(createTrayIcon());
+  tray.setToolTip(`Uncensored Browser — ${session.statusLabel()}`);
   refreshMenu();
+
+  console.log(
+    "[uncensored-browser] Tray Client ready. Look for the blue icon near the clock (system tray). Right-click it for Arm / Configure / Quit.",
+  );
+
+  if (Notification.isSupported()) {
+    new Notification({
+      title: "Uncensored Browser",
+      body: "Tray Client is running (disarmed). Right-click the blue tray icon.",
+    }).show();
+  }
 
   ipcMain.handle(
     "tray:save-endpoint",

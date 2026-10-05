@@ -55,22 +55,27 @@ export class ShieldSessionController {
     if (!isCompleteEndpoint(this.endpoint)) {
       return { ok: false, reason: "incomplete_endpoint" };
     }
-    if (this.sessionStatus === "armed" || this.sessionStatus === "proxy_outage") {
+    if (this.sessionStatus === "armed") {
       return { ok: true };
     }
 
+    const recoveringFromOutage = this.sessionStatus === "proxy_outage";
     this.arming = true;
     let started = false;
     try {
       const address = await this.deps.tunnel.start(this.endpoint);
       started = true;
       this.expectedBinding = address;
-      await this.deps.binding.apply(address);
+      if (!recoveringFromOutage) {
+        await this.deps.binding.apply(address);
+      }
       this.sessionStatus = "armed";
       return { ok: true };
     } catch {
-      this.expectedBinding = null;
-      this.sessionStatus = "disarmed";
+      if (!recoveringFromOutage) {
+        this.expectedBinding = null;
+        this.sessionStatus = "disarmed";
+      }
       if (started) {
         try {
           await this.deps.tunnel.stop();

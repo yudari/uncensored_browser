@@ -231,6 +231,26 @@ describe("ShieldSessionController", () => {
     expect(prompt.notifications).toHaveLength(1);
   });
 
+  it("restarts the Tunnel when Arming from Proxy Outage", async () => {
+    const tunnel = new FakeTunnelDriver();
+    const prompt = new FakeOperatorPrompt();
+    prompt.nextOutageChoice = "keep_fail_closed";
+    const binding = new FakeSystemProxyBinding();
+    const { controller } = createController({ tunnel, binding, prompt });
+    controller.configure(validEndpoint());
+    await controller.arm();
+    await tunnel.simulateExit();
+    expect(controller.status()).toBe("proxy_outage");
+    const startsBefore = tunnel.starts.length;
+
+    const result = await controller.arm();
+
+    expect(result).toEqual({ ok: true });
+    expect(controller.status()).toBe("armed");
+    expect(tunnel.starts.length).toBe(startsBefore + 1);
+    expect(binding.current).toEqual({ host: "127.0.0.1", port: 1080 });
+  });
+
   it("Disarms when shutting down while armed", async () => {
     const { binding, tunnel, controller } = createHarness();
     controller.configure(validEndpoint());

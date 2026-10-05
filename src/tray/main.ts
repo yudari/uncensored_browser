@@ -1,6 +1,7 @@
 import {
   app,
   BrowserWindow,
+  dialog,
   ipcMain,
   Menu,
   nativeImage,
@@ -8,14 +9,20 @@ import {
 } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { WindowsSystemProxyBinding } from "../binding/windows-system-proxy-binding.js";
+import { createWindowsRegistryProxyPort } from "../binding/windows-registry-proxy-port.js";
 import { ShieldSessionController } from "../shield-session/controller.js";
 import type { UpstreamEndpoint } from "../shield-session/ports.js";
 import { SshTunnelDriver } from "../tunnel/ssh-tunnel-driver.js";
-import { WindowsSystemProxyBinding } from "../binding/windows-system-proxy-binding.js";
-import { createWindowsRegistryProxyPort } from "../binding/windows-registry-proxy-port.js";
 import { ElectronOperatorPrompt } from "./electron-prompt.js";
 import { EndpointStore } from "./endpoint-store.js";
 import { createJsonFilePort } from "./json-file-port.js";
+import {
+  createElectronLoginAutoStartPort,
+  LoginAutoStart,
+} from "./login-auto-start.js";
+import { LoginAutoStartPreference } from "./login-auto-start-preference.js";
+import { formatOperatorLimitations } from "./operator-notes.js";
 import { TraySession } from "./tray-session.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -24,6 +31,8 @@ let tray: Tray | null = null;
 let configWindow: BrowserWindow | null = null;
 let session!: TraySession;
 let prompt!: ElectronOperatorPrompt;
+let loginAutoStart!: LoginAutoStart;
+let loginAutoStartPreference!: LoginAutoStartPreference;
 let bindingGuardTimer: NodeJS.Timeout | null = null;
 let isQuitting = false;
 
@@ -71,6 +80,24 @@ function refreshMenu(): void {
     {
       label: "Configure Upstream Endpoint…",
       click: () => openConfigWindow(),
+    },
+    {
+      label: "Start Tray Client at Windows login",
+      type: "checkbox",
+      checked: loginAutoStart.isEnabled(),
+      click: (menuItem) => {
+        void (async () => {
+          loginAutoStart.setEnabled(menuItem.checked);
+          await loginAutoStartPreference.saveEnabled(menuItem.checked);
+          refreshMenu();
+        })();
+      },
+    },
+    {
+      label: "Limitations…",
+      click: () => {
+        void showLimitations();
+      },
     },
   ];
 
@@ -125,13 +152,28 @@ async function quitApp(): Promise<void> {
   if (isQuitting) return;
   isQuitting = true;
   stopBindingGuard();
-  await session.shutdown();
-  app.quit();
+  try {
+    await session.shutdown();
+  } finally {
+    app.exit(0);
+  }
+}
+
+async function showLimitations(): Promise<void> {
+  await dialog.showMessageBox({
+    type: "info",
+    title: "Limitations",
+    message: "Dev Upstream phase",
+    detail: formatOperatorLimitations(),
+    buttons: ["OK"],
+  });
 }
 
 function openConfigWindow(): void {
   if (!session.canConfigure()) {
-    void prompt.notify("Disarm the Shield Session before changing Upstream Endpoint.");
+    void prompt.notify(
+      "Disarm the Shield Session before changing Upstream Endpoint.",
+    );
     return;
   }
 
@@ -141,8 +183,8 @@ function openConfigWindow(): void {
   }
 
   configWindow = new BrowserWindow({
-    width: 480,
-    height: 440,
+    width: 520,
+    height: 480,
     title: "Upstream Endpoint",
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
@@ -182,7 +224,12 @@ function buildConfigHtml(endpoint: UpstreamEndpoint | null): string {
 </head>
 <body>
   <h1>Upstream Endpoint</h1>
-  <p class="note">Uses OpenSSH <code>ssh -D</code> plus Windows System Proxy Binding (<code>socks=host:port</code>) so Chrome/Edge follow the Local Proxy. Loopback hosts show as Dev Upstream. Dev Upstream does not defeat ISP Blocks.</p>
+  <p class="note">
+    OpenSSH <code>ssh -D</code> + Windows System Proxy Binding.
+    Loopback hosts are labeled <strong>Dev Upstream</strong> and do <strong>not</strong> defeat ISP Blocks
+    (see tray <em>Limitations…</em> and <code>docs/OPERATOR.md</code>).
+    Login auto-start never auto-Arms.
+  </p>
   <label>Host <input id="host" value="${escapeHtml(host)}" /></label>
   <label>SSH user <input id="sshUser" value="${escapeHtml(sshUser)}" /></label>
   <label>Operator Key path <input id="operatorKeyPath" value="${escapeHtml(operatorKeyPath)}" /></label>
@@ -224,6 +271,14 @@ app.whenReady().then(async () => {
     app.setAppUserModelId("com.yudari.uncensored-browser");
   }
 
+  // Login launch must stay disarmed — never Arm here.
+  loginAutoStart = new LoginAutoStart(createElectronLoginAutoStartPort(app));
+  loginAutoStartPreference = new LoginAutoStartPreference(
+    createJsonFilePort(path.join(app.getPath("userData"), "login-auto-start.json")),
+  );
+  const wantLoginAutoStart = await loginAutoStartPreference.loadEnabled();
+  loginAutoStart.setEnabled(wantLoginAutoStart);
+
   session = createSession();
   await session.hydrate();
 
@@ -237,6 +292,12 @@ app.whenReady().then(async () => {
       refreshMenu();
     },
   );
+});
+
+app.on("before-quit", (event) => {
+  if (isQuitting) return;
+  event.preventDefault();
+  void quitApp();
 });
 
 app.on("window-all-closed", () => {

@@ -37,6 +37,7 @@ describe("TraySession", () => {
 
     expect(session.endpointSummary()).toContain("127.0.0.1");
     expect(session.endpointSummary()).toContain("Dev Upstream");
+    expect(session.endpointSummary()).toContain("not Unblock Milestone");
     expect(session.statusLabel()).toBe("Disarmed");
   });
 

@@ -74,7 +74,10 @@ export class TraySession {
     const kind = isDevUpstreamHost(this.endpoint.host)
       ? "Dev Upstream"
       : "Upstream";
-    return `${kind}: ${this.endpoint.sshUser}@${this.endpoint.host}:${this.endpoint.sshPort}`;
+    const base = `${kind}: ${this.endpoint.sshUser}@${this.endpoint.host}:${this.endpoint.sshPort}`;
+    return kind === "Dev Upstream"
+      ? `${base} — not Unblock Milestone`
+      : base;
   }
 
   currentEndpoint(): UpstreamEndpoint | null {

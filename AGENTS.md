@@ -18,4 +18,4 @@ Single-context: root `GLOSSARY.md` + `docs/adr/`. See `docs/agents/domain.md`.
 
 ### Operator / Tray Client
 
-See `docs/OPERATOR.md`. The Tray Client has no main window: after `npm start` expect a tray icon (and optional notification); the terminal staying open is normal, not a hang. Use `npm run start:quick` when `dist/` is already built.
+See `docs/OPERATOR.md` and root `README.md`. The Tray Client has no main window: after `npm start` expect a tray icon (and optional notification); the terminal staying open is normal, not a hang. Use `npm run start:quick` when `dist/` is already built.

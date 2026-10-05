@@ -17,7 +17,11 @@ function createTraySession() {
   const binding = new StubSystemProxyBinding();
   const prompt = new FakeOperatorPrompt();
   const controller = new ShieldSessionController({ tunnel, binding, prompt });
-  const session = new TraySession({ controller, store, tunnel });
+  const session = new TraySession({
+    controller,
+    store,
+    simulateTunnelExit: () => tunnel.simulateExit(),
+  });
   return { session, tunnel, binding, prompt, store };
 }
 

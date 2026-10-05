@@ -1,12 +1,11 @@
 import type { ShieldSessionController } from "../shield-session/controller.js";
 import type { ArmResult, UpstreamEndpoint } from "../shield-session/ports.js";
 import { EndpointStore, isDevUpstreamHost } from "./endpoint-store.js";
-import type { StubTunnelDriver } from "./stub-drivers.js";
 
 export type TraySessionDeps = {
   controller: ShieldSessionController;
   store: EndpointStore;
-  tunnel: StubTunnelDriver;
+  simulateTunnelExit?: () => Promise<void>;
 };
 
 export class TraySession {
@@ -48,8 +47,15 @@ export class TraySession {
     await this.deps.controller.checkBinding();
   }
 
+  canSimulateTunnelOutage(): boolean {
+    return typeof this.deps.simulateTunnelExit === "function";
+  }
+
   async simulateTunnelOutage(): Promise<void> {
-    await this.deps.tunnel.simulateExit();
+    if (!this.deps.simulateTunnelExit) {
+      throw new Error("Tunnel outage simulation is unavailable for this Tunnel Driver");
+    }
+    await this.deps.simulateTunnelExit();
   }
 
   statusLabel(): string {

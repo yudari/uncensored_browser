@@ -14,7 +14,11 @@ export type SessionStatus = "disarmed" | "armed" | "proxy_outage";
 
 export type ArmResult =
   | { ok: true }
-  | { ok: false; reason: "incomplete_endpoint" | "tunnel_failed" };
+  | {
+      ok: false;
+      reason: "incomplete_endpoint" | "tunnel_failed";
+      message?: string;
+    };
 
 export type OutageChoice = "keep_fail_closed" | "release_binding";
 

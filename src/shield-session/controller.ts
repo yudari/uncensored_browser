@@ -71,7 +71,7 @@ export class ShieldSessionController {
       }
       this.sessionStatus = "armed";
       return { ok: true };
-    } catch {
+    } catch (error) {
       if (!recoveringFromOutage) {
         this.expectedBinding = null;
         this.sessionStatus = "disarmed";
@@ -83,7 +83,12 @@ export class ShieldSessionController {
           // Best-effort cleanup after failed Arm.
         }
       }
-      return { ok: false, reason: "tunnel_failed" };
+      return {
+        ok: false,
+        reason: "tunnel_failed",
+        message:
+          error instanceof Error ? error.message : "Tunnel failed to start",
+      };
     } finally {
       this.arming = false;
     }

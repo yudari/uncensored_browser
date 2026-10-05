@@ -107,7 +107,11 @@ describe("ShieldSessionController", () => {
 
     const result = await controller.arm();
 
-    expect(result).toEqual({ ok: false, reason: "tunnel_failed" });
+    expect(result).toEqual({
+      ok: false,
+      reason: "tunnel_failed",
+      message: "ssh missing",
+    });
     expect(controller.status()).toBe("disarmed");
     expect(binding.applied).toHaveLength(0);
   });

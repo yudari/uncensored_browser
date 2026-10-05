@@ -3,12 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "main": "dist/tray/main.js",
   "scripts": {
+    "build": "tsc && node scripts/copy-preload.mjs",
+    "start": "npm run build && electron .",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "@types/node": "^24.19.1",
+    "electron": "^37.2.6",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
   }
